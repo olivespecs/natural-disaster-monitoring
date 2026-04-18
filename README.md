@@ -54,9 +54,9 @@ Within ~60 seconds, NASA EONET events will appear on the map and feed as the fir
 ### Events
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/api/v1/events` | List all enriched events |
+| `GET` | `/api/v1/events` | List enriched events; supports `category`, `risk_level`, `status`, `include_simulated`, and `limit` filters |
 | `GET` | `/api/v1/events/{id}` | Single event with full AI analysis |
-| `GET` | `/api/v1/events/geojson` | GeoJSON FeatureCollection for Leaflet |
+| `GET` | `/api/v1/events/geojson` | GeoJSON FeatureCollection for Leaflet; supports `category`, `risk_level`, and `include_simulated` filters |
 
 ### Queue
 | Method | Endpoint | Description |
@@ -65,12 +65,15 @@ Within ~60 seconds, NASA EONET events will appear on the map and feed as the fir
 | `GET` | `/api/v1/queue/jobs` | Recent job list |
 | `GET` | `/api/v1/queue/dead-letter` | Jobs that exhausted retries |
 | `POST` | `/api/v1/queue/retry` | Retry all failed jobs |
+| `POST` | `/api/v1/queue/simulate_load` | Enqueue synthetic load-test events |
+| `POST` | `/api/v1/queue/simulate-spike` | Enqueue a spike of synthetic events |
+| `POST` | `/api/v1/queue/clear-simulated` | Remove simulated events and reset the dashboard |
 
 ### Analytics
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/api/v1/analytics/summary` | Category counts, risk distribution, avg severity |
-| `GET` | `/api/v1/analytics/hotspots` | Top 10 highest-severity locations |
+| `GET` | `/api/v1/analytics/summary` | Category counts, risk distribution, avg severity (supports `include_simulated=true`) |
+| `GET` | `/api/v1/analytics/hotspots` | Top 10 highest-severity locations (supports `include_simulated=true`) |
 
 ### Health
 | Method | Endpoint | Description |
@@ -90,7 +93,7 @@ Each event is analysed through a two-tier pipeline:
 
 ```
 GEMINI_API_KEY set?
-  YES  →  Gemini 1.5 Flash (rich narrative + contextual recommendations)
+  YES  →  Gemini model configured in `GEMINI_MODEL` (rich narrative + contextual recommendations)
    NO  →  Heuristic engine (deterministic, domain-expert rules, instant)
  FAIL  →  Heuristic engine (automatic fallback — zero downtime)
 ```
@@ -110,10 +113,12 @@ GEMINI_API_KEY set?
     "Deploy aerial tankers to eastern flank",
     "Pre-position emergency shelters in Riverside County"
   ],
-  "inference_mode": "gemma-4-26b-a4b-it",
+  "inference_mode": "heuristic",
   "confidence": 0.91
 }
 ```
+
+The default Gemini model configured for this project is `gemma-4-26b-a4b-it`; when no key is present, the heuristic engine handles inference.
 
 ---
 
