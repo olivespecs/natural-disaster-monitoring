@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+redis
+rq
+httpx
+python-dotenv
+pydantic
+pydantic-settings
+google-genai

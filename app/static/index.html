@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NASA EONET — Real-Time AI Event Monitor</title>
+  <meta name="description" content="Real-time AI-powered natural disaster monitoring using NASA EONET live data with Gemini AI risk analysis." />
+
+  <!-- Leaflet.js -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+  <!-- ── HEADER ────────────────────────────────────────────────────────────── -->
+  <header class="header" role="banner">
+    <div class="header-brand">
+      <span class="brand-icon">🛰️</span>
+      <div class="brand-text">
+        <span class="brand-title">EONET AI Monitor</span>
+        <span class="brand-sub">NASA Earth Observatory Natural Event Tracker</span>
+      </div>
+    </div>
+
+    <div class="header-center">
+      <div class="live-pill">
+        <span class="live-dot" aria-hidden="true"></span>
+        <span>LIVE</span>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <div class="inference-badge" id="inference-badge" title="Active AI inference engine">
+        <span id="inference-icon">🧠</span>
+        <span id="inference-label">Loading…</span>
+      </div>
+      <div class="header-clock" id="header-clock" aria-label="Current UTC time"></div>
+    </div>
+  </header>
+
+  <!-- ── MAIN LAYOUT ────────────────────────────────────────────────────────── -->
+  <main class="layout" role="main">
+
+    <!-- LEFT: Map panel -->
+    <section class="map-section" aria-label="Global event map">
+      <div class="map-header">
+        <h1 class="section-title">🌍 Global Event Map</h1>
+        <div class="filter-row" role="group" aria-label="Category filters">
+          <button class="filter-btn active" id="filter-all"        onclick="setFilter('all')"          aria-pressed="true">All</button>
+          <button class="filter-btn"        id="filter-wildfires"  onclick="setFilter('wildfires')"    aria-pressed="false">🔥 Fire</button>
+          <button class="filter-btn"        id="filter-storms"     onclick="setFilter('severeStorms')" aria-pressed="false">🌀 Storm</button>
+          <button class="filter-btn"        id="filter-volcanoes"  onclick="setFilter('volcanoes')"    aria-pressed="false">🌋 Volcano</button>
+          <button class="filter-btn"        id="filter-floods"     onclick="setFilter('floods')"       aria-pressed="false">🌊 Flood</button>
+          <button class="filter-btn risk-btn" id="filter-critical" onclick="setRiskFilter('CRITICAL')" aria-pressed="false">🔴 Critical</button>
+        </div>
+      </div>
+
+      <div id="map" role="application" aria-label="Interactive world map showing natural events"></div>
+
+      <div class="map-legend" aria-label="Risk level legend">
+        <span class="legend-label">Risk:</span>
+        <span class="legend-item"><span class="ldot critical" aria-hidden="true"></span>Critical</span>
+        <span class="legend-item"><span class="ldot high"     aria-hidden="true"></span>High</span>
+        <span class="legend-item"><span class="ldot medium"   aria-hidden="true"></span>Medium</span>
+        <span class="legend-item"><span class="ldot low"      aria-hidden="true"></span>Low</span>
+      </div>
+    </section>
+
+    <!-- RIGHT: Side panels -->
+    <aside class="side-panels" aria-label="Analytics and monitoring panels">
+
+      <!-- Stats row -->
+      <div class="stats-row" role="region" aria-label="Event statistics">
+        <div class="stat-card">
+          <div class="stat-val" id="s-total">0</div>
+          <div class="stat-lbl">Total Events</div>
+        </div>
+        <div class="stat-card critical-card">
+          <div class="stat-val" id="s-critical">0</div>
+          <div class="stat-lbl">Critical</div>
+        </div>
+        <div class="stat-card high-card">
+          <div class="stat-val" id="s-high">0</div>
+          <div class="stat-lbl">High Risk</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="s-processed">0</div>
+          <div class="stat-lbl">Analysed</div>
+        </div>
+      </div>
+
+      <!-- Live Event Feed -->
+      <div class="panel feed-panel" role="region" aria-label="Live event feed" aria-live="polite">
+        <div class="panel-hdr">
+          <h2 class="panel-title">⚡ Live Event Feed</h2>
+          <span class="badge" id="feed-badge">0 events</span>
+        </div>
+        <div class="event-feed" id="event-feed">
+          <div class="feed-empty" id="feed-empty">
+            <div class="spinner" aria-label="Loading"></div>
+            <p>Waiting for NASA EONET data…</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts row -->
+      <div class="charts-row">
+        <div class="panel chart-panel" role="region" aria-label="Event category distribution">
+          <h2 class="panel-title">📊 Categories</h2>
+          <div class="chart-wrap">
+            <canvas id="cat-chart" aria-label="Category donut chart"></canvas>
+          </div>
+        </div>
+        <div class="panel chart-panel" role="region" aria-label="Risk level distribution">
+          <h2 class="panel-title">⚠️ Risk Levels</h2>
+          <div class="chart-wrap">
+            <canvas id="risk-chart" aria-label="Risk level bar chart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Queue Monitor -->
+      <div class="panel queue-panel" role="region" aria-label="Inference queue monitor">
+        <div class="panel-hdr">
+          <h2 class="panel-title">⚙️ Inference Queue</h2>
+          <div class="workers-pill" id="workers-pill">
+            <span class="worker-dot" aria-hidden="true"></span>
+            <span id="worker-label">0 workers</span>
+          </div>
+        </div>
+        <div class="queue-grid">
+          <div class="q-stat"><div class="q-num" id="q-queued">0</div><div class="q-lbl">Queued</div></div>
+          <div class="q-stat"><div class="q-num amber" id="q-started">0</div><div class="q-lbl">Processing</div></div>
+          <div class="q-stat"><div class="q-num green" id="q-finished">0</div><div class="q-lbl">Finished</div></div>
+          <div class="q-stat"><div class="q-num red"   id="q-failed">0</div><div class="q-lbl">Failed</div></div>
+        </div>
+        <div class="poll-row">
+          <span>Last poll: <strong id="last-poll">—</strong></span>
+          <span>Next in: <strong id="next-poll">—s</strong></span>
+        </div>
+        <div class="poll-track" aria-label="Poll countdown" role="progressbar">
+          <div class="poll-fill" id="poll-fill"></div>
+        </div>
+      </div>
+
+    </aside>
+  </main>
+
+  <!-- ── EVENT DETAIL MODAL ────────────────────────────────────────────────── -->
+  <div class="modal-backdrop" id="modal-backdrop" role="dialog" aria-modal="true" aria-label="Event details" style="display:none" onclick="closeModal()">
+    <div class="modal" onclick="event.stopPropagation()">
+      <button class="modal-close" id="modal-close-btn" onclick="closeModal()" aria-label="Close">✕</button>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- ── SCRIPTS ───────────────────────────────────────────────────────────── -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>
