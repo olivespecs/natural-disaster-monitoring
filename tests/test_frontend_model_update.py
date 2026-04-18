@@ -6,8 +6,11 @@ Failure confirms the bugs exist. DO NOT fix the code to make these pass.
 
 Validates: Requirements 1.1, 1.2, 1.3, 1.4, 1.5
 """
+import os
 from pathlib import Path
 from html.parser import HTMLParser
+from hypothesis import given, settings as h_settings
+from hypothesis import strategies as st
 
 
 # ---------------------------------------------------------------------------
@@ -173,12 +176,7 @@ def test_index_html_has_no_inline_websocket_script():
 # ---------------------------------------------------------------------------
 # Preservation — Property 3: Env-var override always wins
 # ---------------------------------------------------------------------------
-
-import os
-import sys
-
-from hypothesis import given, settings as h_settings
-from hypothesis import strategies as st
+# ---------------------------------------------------------------------------
 
 
 def _settings_with_env(model_value: str):

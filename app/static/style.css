@@ -292,7 +292,7 @@ html, body, section, aside, header { margin: 0; padding: 0; }
 }
 
 /* ── Event feed ──────────────────────────────────────────────────────────── */
-.feed-panel { flex: 1.5; min-height: 0; display: flex; flex-direction: column; }
+.feed-panel { flex: 1.5; min-height: 180px; display: flex; flex-direction: column; }
 .event-feed {
   flex: 1;
   overflow-x: auto;

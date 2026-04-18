@@ -30,7 +30,7 @@ class _RetryClient:
     async def __aenter__(self):
         return self
 
-    async def __aexit__(self, exc_type, exc, tb):
+    async def __aexit__(self, exc_type, _exc, _tb):
         return False
 
     async def get(self, url, params=None):
@@ -63,7 +63,7 @@ async def test_fetch_open_events_retries_then_succeeds(monkeypatch):
             _FakeResponse(200, payload),
         ]
     )
-    monkeypatch.setattr("app.eonet.client.httpx.AsyncClient", lambda timeout: client)
+    monkeypatch.setattr("app.eonet.client.httpx.AsyncClient", lambda _timeout: client)
 
     slept = []
 
@@ -84,7 +84,7 @@ async def test_fetch_open_events_retries_on_network_error(monkeypatch):
     request = httpx.Request("GET", "https://eonet.gsfc.nasa.gov/api/v3/events")
     network_error = httpx.RequestError("network down", request=request)
     client = _RetryClient(responses=[network_error, _FakeResponse(200, {"events": []})])
-    monkeypatch.setattr("app.eonet.client.httpx.AsyncClient", lambda timeout: client)
+    monkeypatch.setattr("app.eonet.client.httpx.AsyncClient", lambda _timeout: client)
 
     async def _fake_sleep(value):
         return None

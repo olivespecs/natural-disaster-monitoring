@@ -308,7 +308,11 @@ function renderFeed(events) {
     return;
   }
 
-  feed.innerHTML = completed.slice(0, 30).map(e => {
+  const oldScroll = feed.scrollLeft;
+
+  const renderItems = completed.slice(0, 30);
+
+  feed.innerHTML = renderItems.map(e => {
     const inf = e.inference;
     const risk = inf.risk_level || 'MEDIUM';
     const mode = inf.inference_mode === 'heuristic' ? 'heuristic' : 'gemini';
@@ -327,6 +331,10 @@ function renderFeed(events) {
         </div>
       </div>`;
   }).join('');
+
+  if (oldScroll > 0) {
+    feed.scrollLeft = oldScroll;
+  }
 }
 
 function showModalFromFeed(eventId) {
@@ -365,7 +373,7 @@ async function fetchGeoJSON() {
 
 async function fetchEvents() {
   try {
-    const r = await fetch('/api/v1/events?limit=200');
+    const r = await fetch('/api/v1/events?limit=250');
     const data = await r.json();
     const events = data.events || [];
     events.forEach(e => { if (e.event?.id) state.events[e.event.id] = e; });
@@ -432,6 +440,26 @@ function connectWebSockets() {
 async function init() {
   initCharts();
   connectWebSockets();
+
+  // Auto-scroll logic for the carousel
+  setInterval(() => {
+    const feed = $('event-feed');
+    if (!feed) return;
+    // Pause if user is interacting with the feed
+    if (feed.matches(':hover') || feed.matches(':focus-within') || feed.matches(':active')) return;
+    // Pause if a modal is currently open
+    const modal = $('modal-backdrop');
+    if (modal && modal.style.display === 'flex') return;
+
+    if (feed.children.length > 1) {
+      if (feed.scrollLeft + feed.clientWidth >= feed.scrollWidth - 10) {
+        feed.scrollLeft = 0;
+      } else {
+        const shift = feed.children[1].offsetLeft - feed.children[0].offsetLeft;
+        feed.scrollBy({ left: shift, behavior: 'smooth' });
+      }
+    }
+  }, 3000);
 
   // Initial data load
   await Promise.all([fetchGeoJSON(), fetchEvents(), fetchSummary()]);

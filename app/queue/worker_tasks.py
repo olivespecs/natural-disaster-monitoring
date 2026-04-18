@@ -80,7 +80,7 @@ def process_event_task(event_dict: dict) -> dict:
         raise
 
 
-def process_event_dead_letter(job, connection, exc_type, exc_value, traceback) -> None:
+def process_event_dead_letter(job, _connection, exc_type, exc_value, _traceback) -> None:
     """RQ failure callback: move exhausted jobs into a dead-letter list."""
     from app.queue.manager import save_dead_letter, get_enriched_event, update_enriched_event
 

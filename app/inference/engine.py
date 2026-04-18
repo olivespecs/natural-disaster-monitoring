@@ -78,7 +78,7 @@ def run_inference(event: EONETEvent) -> InferenceResult:
 
     risk_level = severity_to_risk(severity_score)
     trend = severity_to_trend(severity_score, geo_count)
-    estimated_impact = estimate_impact_description(lat or 30.0, lon or 0.0, area, risk_level)
+    estimated_impact = estimate_impact_description(lat or 30.0, lon or 0.0, risk_level)
     heuristic_recs = get_recommendations(category_id, risk_level)
 
     # Default narrative (heuristic)

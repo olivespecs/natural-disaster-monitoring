@@ -22,7 +22,7 @@ def get_population_zone(lat: float) -> str:
     return "polar_low"
 
 
-def estimate_impact_description(lat: float, lon: float, area_proxy: float, risk_level: str) -> str:
+def estimate_impact_description(lat: float, lon: float, risk_level: str) -> str:
     """Generate a human-readable impact estimate based on location and risk."""
     zone = get_population_zone(lat)
     high_density = zone in ("subtropical_high", "temperate_high", "tropical_dense")

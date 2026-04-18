@@ -36,12 +36,10 @@ async def list_jobs(limit: int = 30):
 
 @router.post("/retry", summary="Re-enqueue all failed jobs")
 async def retry_failed():
-    from rq.job import Job
     failed_ids = inference_queue.failed_job_registry.get_job_ids()
     requeued = 0
     for jid in failed_ids:
         try:
-            job = Job.fetch(jid, connection=redis_conn)
             inference_queue.failed_job_registry.requeue(jid)
             requeued += 1
         except Exception:

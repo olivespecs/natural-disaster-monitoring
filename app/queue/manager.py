@@ -7,7 +7,6 @@ from typing import List, Optional
 
 import redis
 from rq import Queue
-from rq.job import Job
 from rq import Retry
 
 from app.config import settings
@@ -57,7 +56,7 @@ async def mark_event_seen(event_id: str) -> bool:
 
 async def enqueue_event(event: EONETEvent) -> str:
     """Enqueue an EONET event for AI inference. Returns the RQ job ID."""
-    from app.queue.worker_tasks import process_event_task  # avoid circular import
+    from app.queue.worker_tasks import process_event_task, process_event_dead_letter  # avoid circular import
 
     job = inference_queue.enqueue(
         process_event_task,
