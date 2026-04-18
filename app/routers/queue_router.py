@@ -1,10 +1,27 @@
+import logging
+
 from fastapi import APIRouter
 
-from app.queue.manager import get_queue_stats, inference_queue, redis_conn, list_dead_letters
+from app.queue.manager import (
+    ENRICHED_EVENT_PREFIX,
+    INFERENCE_WRITE_PREFIX,
+    SEEN_EVENTS_KEY,
+    get_all_enriched_events,
+    get_queue_stats,
+    inference_queue,
+    redis_conn,
+    list_dead_letters,
+)
 from rq.job import Job
 from app.config import settings
 
 router = APIRouter(prefix="/api/v1/queue", tags=["Queue"])
+logger = logging.getLogger(__name__)
+
+
+def _is_simulated_event_record(enriched_event: dict) -> bool:
+    event_id = ((enriched_event.get("event") or {}).get("id") or "")
+    return event_id.startswith(("SIM_", "SPIKE_"))
 
 
 @router.get("/stats", summary="Live queue depth, worker count, and throughput")
@@ -52,6 +69,79 @@ async def retry_failed():
 async def dead_letter_jobs(limit: int = 50):
     jobs = list_dead_letters(limit=limit)
     return {"jobs": jobs, "total": len(jobs)}
+
+
+@router.post("/clear-simulated", summary="Remove simulated load/spike data and reset to NASA-only view")
+async def clear_simulated_data():
+    simulated_records = [e for e in get_all_enriched_events() if _is_simulated_event_record(e)]
+    cleared_events = 0
+    cleared_markers = 0
+    cleared_jobs = 0
+
+    # Remove stored feed records and dedupe markers.
+    for record in simulated_records:
+        event = record.get("event") or {}
+        event_id = event.get("id")
+        if not event_id:
+            continue
+
+        redis_conn.delete(f"{ENRICHED_EVENT_PREFIX}{event_id}")
+        redis_conn.srem(SEEN_EVENTS_KEY, event_id)
+        cleared_events += 1
+
+        for marker_key in redis_conn.scan_iter(match=f"{INFERENCE_WRITE_PREFIX}{event_id}:*"):
+            redis_conn.delete(marker_key)
+            cleared_markers += 1
+
+    # Remove queued/finished registry references for the simulated jobs.
+    queue_keys = [
+        "rq:queue:eonet-inference",
+        "rq:finished:eonet-inference",
+        "rq:wip:eonet-inference",
+        "rq:started:eonet-inference",
+        "rq:failed:eonet-inference",
+    ]
+    job_ids = []
+    for record in simulated_records:
+        job_id = record.get("job_id")
+        if job_id:
+            job_ids.append(job_id)
+
+    for job_id in dict.fromkeys(job_ids):
+        try:
+            inference_queue.remove(job_id)
+        except Exception:
+            pass
+
+        for key in queue_keys:
+            try:
+                redis_conn.lrem(key, 0, job_id)
+            except Exception:
+                try:
+                    redis_conn.zrem(key, job_id)
+                except Exception:
+                    pass
+
+        try:
+            job = Job.fetch(job_id, connection=redis_conn)
+            job.delete(remove_from_queue=False)
+        except Exception:
+            pass
+
+        cleared_jobs += 1
+
+    logger.info(
+        "cleared_simulated_data records=%s jobs=%s markers=%s",
+        cleared_events,
+        cleared_jobs,
+        cleared_markers,
+    )
+    return {
+        "cleared_events": cleared_events,
+        "cleared_jobs": cleared_jobs,
+        "cleared_markers": cleared_markers,
+        "message": "Simulated data cleared. Dashboard can return to NASA-only view.",
+    }
 
 
 @router.post("/simulate_load", summary="Simulate extreme load with fully structured mock EONET events")

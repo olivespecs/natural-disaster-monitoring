@@ -578,6 +578,30 @@ html, body, section, aside, header { margin: 0; padding: 0; }
   box-shadow: 0 4px 12px rgba(124,58,237,0.2);
 }
 
+.spike-button.loading {
+  opacity: 0.85;
+  cursor: wait;
+  position: relative;
+}
+
+.spike-button.loading::after {
+  content: '';
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-left: 8px;
+  vertical-align: middle;
+  border: 2px solid rgba(226,232,240,0.25);
+  border-top-color: var(--accent2);
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 /* ── Modal ───────────────────────────────────────────────────────────────── */
 .modal-backdrop {
   position: fixed;

@@ -5,6 +5,8 @@
 
 'use strict';
 
+const FEED_SIMULATED_STORAGE_KEY = 'nava.feed.includeSimulated';
+
 // ── State ─────────────────────────────────────────────────────────────────
 const state = {
   events: {},           // id → enriched event
@@ -18,8 +20,32 @@ const state = {
   markers: {},          // event id → Leaflet marker
 };
 
+try {
+  state.includeSimulated = window.localStorage.getItem(FEED_SIMULATED_STORAGE_KEY) === 'true';
+} catch (e) {
+  state.includeSimulated = false;
+}
+
 // ── DOM refs ──────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
+
+
+function setButtonLoading(buttonId, isLoading, label) {
+  const button = $(buttonId);
+  if (!button) return;
+  button.classList.toggle('loading', isLoading);
+  button.disabled = isLoading;
+  button.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+  if (label !== undefined) {
+    button.dataset.label = label;
+  }
+  const baseLabel = button.dataset.label || button.textContent.trim();
+  if (isLoading) {
+    button.textContent = `⏳ ${baseLabel}`;
+  } else {
+    button.textContent = baseLabel.replace(/^⏳\s*/, '');
+  }
+}
 
 
 function apiUrl(path, params = {}) {
@@ -358,7 +384,7 @@ function checkBackpressure(metrics) {
 function simulateSpike() {
   // Simulate a spike by creating multiple dummy tasks
   console.log('Simulating task spike...');
-  const spikeCount = 10;
+  const spikeCount = 50;
   
   // Send request to backend to inject test tasks
   fetch(`/api/v1/queue/simulate-spike?count=${spikeCount}`, {
@@ -368,6 +394,11 @@ function simulateSpike() {
     .then(r => r.json())
     .then(data => {
       state.includeSimulated = true;
+      try {
+        window.localStorage.setItem(FEED_SIMULATED_STORAGE_KEY, 'true');
+      } catch (e) {
+        /* ignore storage failures */
+      }
       console.log('Spike simulation started:', data);
       fetchGeoJSON();
       fetchEvents();
@@ -375,6 +406,34 @@ function simulateSpike() {
       alert(`✓ Spike simulation started (${data.count || spikeCount} events). New spike events are prioritized in queue.`);
     })
     .catch(err => console.error('Spike simulation failed:', err));
+}
+
+function clearSimulatedData() {
+  console.log('Clearing simulated spike/load data...');
+  setButtonLoading('clear-simulated-btn', true, 'Clear Simulated');
+
+  fetch(`/api/v1/queue/clear-simulated`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  })
+    .then(r => r.json())
+    .then(data => {
+      state.includeSimulated = false;
+      try {
+        window.localStorage.removeItem(FEED_SIMULATED_STORAGE_KEY);
+      } catch (e) {
+        /* ignore storage failures */
+      }
+      console.log('Simulated data cleared:', data);
+      fetchGeoJSON();
+      fetchEvents();
+      fetchSummary();
+      alert(`✓ Simulated data cleared (${data.cleared_events || 0} records removed). Dashboard reset to normal view.`);
+    })
+    .catch(err => console.error('Clear simulated data failed:', err))
+    .finally(() => {
+      setButtonLoading('clear-simulated-btn', false, 'Clear Simulated');
+    });
 }
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
@@ -445,8 +504,7 @@ function updateCharts(summary) {
 }
 
 // ── Stats counters ────────────────────────────────────────────────────────
-function updateStats(events) {
-  const total = events.length;
+function updateStats(events, total = events.length) {
   const completed = events.filter(e => e.status === 'completed');
   const critical = completed.filter(e => e.inference?.risk_level === 'CRITICAL').length;
   const high = completed.filter(e => e.inference?.risk_level === 'HIGH').length;
@@ -481,10 +539,18 @@ function renderFeed(events) {
     .filter(e => e.status === 'completed' && e.inference)
     .sort((a, b) => (b.completed_at || '').localeCompare(a.completed_at || ''));
 
-  $('feed-badge').textContent = `${completed.length} event${completed.length !== 1 ? 's' : ''}`;
+  const inFlight = events
+    .filter(e => e.status === 'queued' || e.status === 'processing')
+    .sort((a, b) => (b.queued_at || '').localeCompare(a.queued_at || ''));
+
+  const processingCount = events.filter(e => e.status === 'processing').length;
+  const queuedCount = events.filter(e => e.status === 'queued').length;
+  $('feed-badge').textContent = (processingCount > 0 || queuedCount > 0)
+    ? `⏳ ${processingCount} processing · 🕒 ${queuedCount} queued`
+    : `${events.length} event${events.length !== 1 ? 's' : ''}`;
 
   const feed = $('event-feed');
-  if (completed.length === 0) {
+  if (completed.length === 0 && inFlight.length === 0) {
     feed.innerHTML = `
       <div class="feed-empty" id="feed-empty">
         <div class="spinner"></div>
@@ -495,24 +561,33 @@ function renderFeed(events) {
 
   const oldScroll = feed.scrollLeft;
 
-  const renderItems = completed.slice(0, 30);
+  // Prefer completed cards, but show queued/processing cards immediately while inference catches up.
+  const renderItems = (completed.length > 0 ? completed : inFlight).slice(0, 30);
 
   feed.innerHTML = renderItems.map(e => {
-    const inf = e.inference;
-    const risk = inf.risk_level || 'MEDIUM';
+    const inf = e.inference || {};
+    const status = e.status || 'queued';
+    const isComplete = status === 'completed' && !!e.inference;
+    const risk = inf.risk_level || (status === 'processing' ? 'MEDIUM' : 'LOW');
     const mode = inf.inference_mode === 'heuristic' ? 'heuristic' : 'gemini';
     const modeLabel = mode === 'heuristic' ? 'heuristic' : 'Gemini';
+    const statusLabel = status === 'processing' ? '⏳ PROCESSING' : '🕒 QUEUED';
+    const rightPill = isComplete
+      ? `<span class="risk-pill ${risk}">${risk}</span>`
+      : `<span class="risk-pill MEDIUM">${statusLabel}</span>`;
+    const scoreLabel = isComplete ? `⚡ ${inf.severity_score}/100` : '⏳ Inference pending';
+    const modeChip = isComplete ? `<span class="mode-chip ${mode}">${modeLabel}</span>` : '';
     return `
       <div class="event-card risk-${risk}" onclick='showModalFromFeed(${JSON.stringify(e.event?.id || "")})'
            role="button" tabindex="0" aria-label="${e.event?.title || 'Event'}">
         <div class="card-top">
           <span class="card-title">${e.event?.title || 'Unknown Event'}</span>
-          <span class="risk-pill ${risk}">${risk}</span>
+          ${rightPill}
         </div>
         <div class="card-meta">
-          <span class="card-cat">${inf.category || ''}</span>
-          <span class="card-score">⚡ ${inf.severity_score}/100</span>
-          <span class="mode-chip ${mode}">${modeLabel}</span>
+          <span class="card-cat">${inf.category || (e.event?.categories?.[0]?.title || '')}</span>
+          <span class="card-score">${scoreLabel}</span>
+          ${modeChip}
         </div>
       </div>`;
   }).join('');
@@ -564,12 +639,13 @@ async function fetchGeoJSON() {
 
 async function fetchEvents() {
   try {
-    const r = await fetch(apiUrl('/api/v1/events', { limit: 250 }));
+    const r = await fetch(apiUrl('/api/v1/events', { limit: 500 }));
     const data = await r.json();
     const events = data.events || [];
+    state.totalEventCount = typeof data.total === 'number' ? data.total : events.length;
     events.forEach(e => { if (e.event?.id) state.events[e.event.id] = e; });
     renderFeed(events);
-    updateStats(events);
+    updateStats(events, state.totalEventCount);
   } catch (e) { console.warn('Events fetch failed:', e); }
 }
 

@@ -221,6 +221,7 @@
                     <div class="panel-title">Async Queue & Load Monitor (Redis+RQ)</div>
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <button id="spike-btn" class="spike-button" onclick="simulateSpike()" type="button" title="Simulate 50-event disaster spike">Simulate Spike</button>
+                        <button id="clear-simulated-btn" class="spike-button" onclick="clearSimulatedData()" type="button" title="Remove simulated spike/load data and return to normal">Clear Simulated</button>
                         <div class="workers-pill"><span class="worker-dot"></span><span id="worker-label">0 workers</span></div>
                     </div>
                 </div>
