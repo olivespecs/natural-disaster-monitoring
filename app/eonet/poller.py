@@ -5,7 +5,7 @@ import logging
 from datetime import datetime
 
 from app.eonet.client import fetch_open_events
-from app.queue.manager import enqueue_event, get_seen_event_ids, mark_event_seen
+from app.queue.manager import enqueue_event, mark_event_seen
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -40,13 +40,12 @@ async def run_poller(broadcast_fn=None) -> None:
                 limit=settings.max_events_per_poll,
                 status="open",
             )
-            seen_ids = await get_seen_event_ids()
             new_count = 0
 
             for event in events:
-                if event.id not in seen_ids:
+                is_new = await mark_event_seen(event.id)
+                if is_new:
                     await enqueue_event(event)
-                    await mark_event_seen(event.id)
                     new_count += 1
                     logger.info(f"  ↳ Enqueued: [{event.id}] {event.title}")
 

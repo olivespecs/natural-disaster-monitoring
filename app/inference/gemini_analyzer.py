@@ -28,6 +28,14 @@ class GeminiAnalyzer:
         self.model_name = settings.gemini_model
         logger.info(f"GeminiAnalyzer initialized with model: {self.model_name}")
 
+    @staticmethod
+    def _sanitize_recommendations(value: object) -> list[str]:
+        if not isinstance(value, list):
+            return []
+        cleaned = [str(item).strip() for item in value if str(item).strip()]
+        # Keep the output stable for UI rendering.
+        return cleaned[:3]
+
     def analyze(
         self,
         event: EONETEvent,
@@ -72,7 +80,11 @@ Respond ONLY with a valid JSON object — no markdown, no explanation, no extra 
   "impact_narrative": "Two-sentence impact assessment here.",
   "recommendations": ["Specific recommendation 1", "Specific recommendation 2", "Specific recommendation 3"],
   "trend": "ESCALATING"
-}}"""
+}}
+Rules:
+- Return exactly 3 recommendations.
+- Use trend value strictly from: STABLE, ESCALATING, DECLINING.
+"""  # noqa: E501
 
         try:
             response = self.client.models.generate_content(
@@ -81,6 +93,7 @@ Respond ONLY with a valid JSON object — no markdown, no explanation, no extra 
                 config=genai_types.GenerateContentConfig(
                     temperature=0.25,
                     max_output_tokens=600,
+                    response_mime_type="application/json",
                 ),
             )
             raw = response.text.strip()
@@ -98,8 +111,12 @@ Respond ONLY with a valid JSON object — no markdown, no explanation, no extra 
             if not required.issubset(result.keys()):
                 raise ValueError(f"Missing keys in Gemini response: {required - result.keys()}")
 
-            if not isinstance(result["recommendations"], list) or len(result["recommendations"]) < 1:
+            recs = self._sanitize_recommendations(result.get("recommendations"))
+            if not recs:
                 raise ValueError("recommendations must be a non-empty list")
+            while len(recs) < 3:
+                recs.append(recs[-1])
+            result["recommendations"] = recs
 
             # Normalize trend
             trend = str(result.get("trend", "STABLE")).upper()

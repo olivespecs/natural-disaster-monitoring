@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.queue.manager import get_queue_stats, inference_queue, redis_conn
+from app.queue.manager import get_queue_stats, inference_queue, redis_conn, list_dead_letters
 from rq.job import Job
 
 router = APIRouter(prefix="/api/v1/queue", tags=["Queue"])
@@ -47,3 +47,9 @@ async def retry_failed():
         except Exception:
             pass
     return {"requeued": requeued}
+
+
+@router.get("/dead-letter", summary="Recent dead-letter jobs that exhausted retries")
+async def dead_letter_jobs(limit: int = 50):
+    jobs = list_dead_letters(limit=limit)
+    return {"jobs": jobs, "total": len(jobs)}

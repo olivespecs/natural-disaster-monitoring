@@ -111,9 +111,15 @@ def run_inference(event: EONETEvent) -> InferenceResult:
             trend = result["trend"]
             inference_mode = settings.gemini_model
             confidence = min(0.97, confidence + 0.20)
-            logger.info(f"[{event.id}] Gemini analysis complete — {risk_level}, trend={trend}")
+            logger.info(
+                f"gemini_analysis_complete event_id={event.id} "
+                f"inference_mode={inference_mode} trend={trend}"
+            )
         except GeminiUnavailable as e:
-            logger.warning(f"[{event.id}] Gemini unavailable, using heuristic: {e}")
+            logger.warning(
+                f"gemini_unavailable_fallback event_id={event.id} "
+                f"inference_mode=heuristic reason={e}"
+            )
 
     return InferenceResult(
         event_id=event.id,

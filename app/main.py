@@ -27,31 +27,34 @@ logger = logging.getLogger(__name__)
 
 # ── Background tasks ─────────────────────────────────────────────────────────
 
-_broadcast_keys: set = set()
+_broadcasted_completed_at: dict[str, str] = {}
 
 
 async def event_watcher() -> None:
     """
-    Poll Redis every 2s for newly-completed inference events and
-    broadcast them to all connected WebSocket clients.
+    Poll Redis every 2s for completed inference events and
+    broadcast each completion once to all connected WebSocket clients.
     """
-    global _broadcast_keys
+    global _broadcasted_completed_at
     while True:
         try:
-            raw_keys = redis_conn.keys(f"{ENRICHED_EVENT_PREFIX}*")
-            current_keys = {k.decode() for k in raw_keys}
-            new_keys = current_keys - _broadcast_keys
-
-            for key in new_keys:
+            for raw_key in redis_conn.scan_iter(match=f"{ENRICHED_EVENT_PREFIX}*"):
+                key = raw_key.decode() if isinstance(raw_key, bytes) else str(raw_key)
                 raw = redis_conn.get(key)
                 if raw:
                     data = json.loads(raw)
                     if data.get("status") == "completed":
+                        event = data.get("event") or {}
+                        event_id = event.get("id")
+                        completed_at = str(data.get("completed_at") or "")
+                        if not event_id:
+                            continue
+                        if _broadcasted_completed_at.get(event_id) == completed_at:
+                            continue
+                        _broadcasted_completed_at[event_id] = completed_at
                         await events_manager.broadcast(
                             {"type": "event_completed", "data": data}
                         )
-
-            _broadcast_keys = current_keys
         except Exception as e:
             logger.error(f"Event watcher error: {e}")
 

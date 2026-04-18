@@ -53,7 +53,7 @@ class InferenceResult(BaseModel):
     estimated_impact: str
     impact_narrative: str
     recommendations: List[str]
-    inference_mode: str            # "gemini-1.5-flash" or "heuristic"
+    inference_mode: str            # "gemma-4-26b-a4b-it" or "heuristic"
     confidence: float
     processed_at: datetime
 

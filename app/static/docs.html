@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Specs | NASA EONET AI Monitor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body {
+            overflow: auto;
+            background:
+                radial-gradient(circle at top left, rgba(0, 212, 255, 0.08), transparent 28%),
+                radial-gradient(circle at bottom right, rgba(124, 58, 237, 0.08), transparent 26%),
+                var(--bg);
+        }
+        .docs-shell {
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            padding-top: var(--header-h);
+        }
+        .docs-nav {
+            padding: 24px;
+            border-right: 1px solid var(--border);
+            background: rgba(14, 20, 40, 0.65);
+            backdrop-filter: blur(14px);
+        }
+        .docs-nav h2 {
+            font-size: 12px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 14px;
+        }
+        .docs-nav a {
+            display: block;
+            padding: 10px 12px;
+            border-radius: 10px;
+            color: var(--subtle);
+            text-decoration: none;
+            font-size: 13px;
+            margin-bottom: 6px;
+            border: 1px solid transparent;
+        }
+        .docs-nav a.active,
+        .docs-nav a:hover {
+            color: var(--accent);
+            background: rgba(0, 212, 255, 0.08);
+            border-color: rgba(0, 212, 255, 0.15);
+        }
+        .docs-main {
+            padding: 32px;
+            max-width: 980px;
+        }
+        .docs-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 22px;
+            margin-bottom: 18px;
+        }
+        .docs-heading {
+            font-size: 34px;
+            line-height: 1.1;
+            margin-bottom: 12px;
+        }
+        .docs-copy {
+            color: var(--subtle);
+            line-height: 1.7;
+            margin-bottom: 8px;
+        }
+        .endpoint {
+            font-family: var(--mono);
+            background: rgba(0,0,0,0.35);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px 16px;
+            overflow-x: auto;
+            color: var(--text);
+        }
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .table th, .table td {
+            border-bottom: 1px solid var(--border);
+            padding: 10px 8px;
+            text-align: left;
+            vertical-align: top;
+        }
+        .table th {
+            color: var(--muted);
+            font-size: 11px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+        .codeblock {
+            background: rgba(0,0,0,0.35);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            overflow-x: auto;
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--text);
+        }
+        .small-note {
+            color: var(--muted);
+            font-size: 12px;
+            margin-top: 8px;
+        }
+        @media (max-width: 960px) {
+            .docs-shell { grid-template-columns: 1fr; }
+            .docs-nav { border-right: 0; border-bottom: 1px solid var(--border); }
+            .docs-main { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-brand">
+            <div class="brand-icon">NASA</div>
+            <div class="brand-copy">
+                <span class="brand-title">NASA EONET Real-Time AI Monitor</span>
+                <span class="brand-sub">Documentation and API reference</span>
+            </div>
+        </div>
+        <div class="header-meta">
+            <a class="badge" href="/" style="text-decoration: none;">Back to dashboard</a>
+        </div>
+    </header>
+
+    <div class="docs-shell">
+        <nav class="docs-nav">
+            <h2>Documentation</h2>
+            <a class="active" href="#websocket">WebSocket Connection</a>
+            <a href="#rest">REST Endpoints</a>
+            <a href="#payload">Event Payload</a>
+            <a href="#queue">Queue Endpoints</a>
+            <a href="#health">Health</a>
+        </nav>
+
+        <main class="docs-main">
+            <section class="docs-card" id="websocket">
+                <div class="section-title">WebSocket Connection</div>
+                <h1 class="docs-heading">Live event stream</h1>
+                <p class="docs-copy">Connect to the local FastAPI server to receive completed inference events in real time. The dashboard uses the same channel to push completed EONET analyses as soon as the worker finishes them.</p>
+                <div class="endpoint">ws://localhost:8000/ws/events</div>
+                <div class="small-note">Use <span style="font-family: var(--mono);">wss://</span> only when deploying behind HTTPS.</div>
+            </section>
+
+            <section class="docs-card" id="rest">
+                <div class="section-title">REST Endpoints</div>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Method</th>
+                            <th>Endpoint</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>GET</td><td>/api/v1/events</td><td>List enriched events with optional filters</td></tr>
+                        <tr><td>GET</td><td>/api/v1/events/{event_id}</td><td>Fetch a single enriched event</td></tr>
+                        <tr><td>GET</td><td>/api/v1/events/geojson</td><td>GeoJSON output for Leaflet map markers</td></tr>
+                        <tr><td>GET</td><td>/api/v1/analytics/summary</td><td>Aggregated counts, severity, and trends</td></tr>
+                        <tr><td>GET</td><td>/api/v1/analytics/hotspots</td><td>Top high-severity locations</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section class="docs-card" id="payload">
+                <div class="section-title">Event Payload</div>
+                <p class="docs-copy">WebSocket messages use a simple wrapper with a nested completed event payload.</p>
+                <div class="codeblock"><pre>{
+  "type": "event_completed",
+  "data": {
+    "event": {
+      "id": "EONET_492",
+      "title": "Earthquake near Honshu"
+    },
+    "status": "completed",
+    "inference": {
+      "risk_level": "HIGH",
+      "severity_score": 82.5,
+      "confidence": 0.92,
+      "impact_narrative": "The event may affect nearby infrastructure and coastal response planning.",
+      "recommendations": [
+        "Issue situational awareness alerts",
+        "Coordinate with local emergency management",
+        "Monitor for secondary impacts"
+      ]
+    }
+  }
+}</pre></div>
+            </section>
+
+            <section class="docs-card" id="queue">
+                <div class="section-title">Queue Endpoints</div>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Method</th>
+                            <th>Endpoint</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>GET</td><td>/api/v1/queue/stats</td><td>Live queue depth and worker counts</td></tr>
+                        <tr><td>GET</td><td>/api/v1/queue/jobs</td><td>Recent jobs and statuses</td></tr>
+                        <tr><td>GET</td><td>/api/v1/queue/dead-letter</td><td>Jobs that exhausted retries</td></tr>
+                        <tr><td>POST</td><td>/api/v1/queue/retry</td><td>Requeue failed jobs</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section class="docs-card" id="health">
+                <div class="section-title">Health</div>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Method</th>
+                            <th>Endpoint</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>GET</td><td>/health</td><td>Liveness check</td></tr>
+                        <tr><td>GET</td><td>/ready</td><td>Readiness check with Redis access</td></tr>
+                    </tbody>
+                </table>
+            </section>
+        </main>
+    </div>
+</body>
+</html>

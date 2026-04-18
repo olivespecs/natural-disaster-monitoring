@@ -1,0 +1,4 @@
+# file: C:\Users\yasha\Desktop\nava ai project\app\inference\rules.py
+# hypothesis_version: 6.151.10
+
+[0.0, 100, 'CRITICAL', 'DECLINING', 'Drought', 'Dust & Haze', 'ESCALATING', 'Earthquakes', 'Floods', 'HIGH', 'LOW', 'Landslides', 'MEDIUM', 'Manmade', 'STABLE', 'Sea & Lake Ice', 'Severe Storms', 'Snow', 'Volcanoes', 'Water Color', 'Wildfires', 'default', 'drought', 'dustHaze', 'earthquakes', 'floods', 'landslides', 'manmade', 'seaLakeIce', 'severeStorms', 'snow', 'volcanoes', 'waterColor', 'wildfires', '☀️', '⚠️', '❄️', '🌀', '🌊', '🌋', '🌫️', '🏗️', '🔥', '🔵', '🗻', '🧊']

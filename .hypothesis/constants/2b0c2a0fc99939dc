@@ -1,0 +1,4 @@
+# file: C:\Users\yasha\AppData\Roaming\Python\Python314\site-packages\cryptography\hazmat\primitives\asymmetric\types.py
+# hypothesis_version: 6.151.10
+
+['PRIVATE_KEY_TYPES', 'PUBLIC_KEY_TYPES']

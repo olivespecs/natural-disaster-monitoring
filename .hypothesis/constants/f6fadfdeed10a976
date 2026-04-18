@@ -1,0 +1,4 @@
+# file: C:\Users\yasha\Desktop\nava ai project\app\inference\gemini_analyzer.py
+# hypothesis_version: 6.151.10
+
+[0.25, 600, 'DECLINING', 'ESCALATING', 'Natural Event', 'STABLE', 'Unknown date', '```', 'application/json', 'impact_narrative', 'json', 'location unknown', 'recommendations', 'trend']

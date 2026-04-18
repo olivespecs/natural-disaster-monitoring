@@ -7,3 +7,5 @@ python-dotenv
 pydantic
 pydantic-settings
 google-genai
+pytest
+pytest-asyncio
