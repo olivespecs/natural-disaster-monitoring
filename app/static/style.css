@@ -34,10 +34,10 @@ html, body {
   color: var(--text);
   font-family: var(--font);
   font-size: 13px;
-  line-height: 1.5;
+  line-height: 1;
   overflow: hidden;
-  margin: 0;
-  padding: 0;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 html, body, section, aside, header { margin: 0; padding: 0; }
@@ -121,8 +121,9 @@ html, body, section, aside, header { margin: 0; padding: 0; }
 .layout {
   display: grid;
   grid-template-columns: 1fr 400px;
-  height: 100vh;
-  padding-top: var(--header-h);
+  height: calc(100vh - var(--header-h));
+  margin-top: var(--header-h) !important;
+  padding: 0 !important;
   overflow: hidden;
 }
 
@@ -138,15 +139,15 @@ html, body, section, aside, header { margin: 0; padding: 0; }
   display: flex !important;
   align-items: flex-start !important;
   justify-content: space-between !important;
-  padding: 0px 16px 2px 16px !important;
+  padding: 2px 16px !important;
   background: rgba(14,20,40,0.9) !important;
   border-bottom: 1px solid var(--border) !important;
   flex-shrink: 0 !important;
   gap: 12px !important;
   flex-wrap: wrap !important;
-  min-height: 0 !important;
+  min-height: 24px !important;
   line-height: 1 !important;
-  height: auto !important;
+  height: 26px !important;
   margin: 0 !important;
 }
 
@@ -156,9 +157,10 @@ html, body, section, aside, header { margin: 0; padding: 0; }
   color: var(--text) !important;
   white-space: nowrap !important;
   line-height: 1 !important;
-  padding-top: 0 !important;
+  padding: 0 !important;
   margin: 0 !important;
   display: block !important;
+  height: 13px !important;
 }
 
 .filter-row { display: flex; gap: 5px; flex-wrap: wrap; }
