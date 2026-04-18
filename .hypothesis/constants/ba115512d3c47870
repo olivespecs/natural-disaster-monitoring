@@ -1,4 +1,0 @@
-# file: C:\Users\yasha\AppData\Roaming\Python\Python314\site-packages\google\genai\_interactions\types\webhook_update_params.py
-# hypothesis_version: 6.151.10
-
-['WebhookUpdateParams', 'batch.cancelled', 'batch.expired', 'batch.failed', 'batch.succeeded', 'disabled', 'enabled', 'interaction.failed', 'video.generated']

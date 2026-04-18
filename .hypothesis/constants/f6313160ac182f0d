@@ -1,4 +1,0 @@
-# file: C:\Users\yasha\AppData\Roaming\Python\Python314\site-packages\websockets\typing.py
-# hypothesis_version: 6.151.10
-
-['ConnectionOption', 'Data', 'ExtensionName', 'ExtensionParameter', 'LoggerLike', 'Origin', 'StatusLike', 'Subprotocol', 'UpgradeProtocol']
