@@ -36,7 +36,11 @@ html, body {
   font-size: 13px;
   line-height: 1.5;
   overflow: hidden;
+  margin: 0;
+  padding: 0;
 }
+
+html, body, section, aside, header { margin: 0; padding: 0; }
 
 /* ── Scrollbar ───────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 4px; }
@@ -131,22 +135,30 @@ html, body {
 }
 
 .map-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 16px;
-  background: rgba(14,20,40,0.9);
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-  gap: 12px;
-  flex-wrap: wrap;
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  padding: 0px 16px 2px 16px !important;
+  background: rgba(14,20,40,0.9) !important;
+  border-bottom: 1px solid var(--border) !important;
+  flex-shrink: 0 !important;
+  gap: 12px !important;
+  flex-wrap: wrap !important;
+  min-height: 0 !important;
+  line-height: 1 !important;
+  height: auto !important;
+  margin: 0 !important;
 }
 
 .section-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
-  white-space: nowrap;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: var(--text) !important;
+  white-space: nowrap !important;
+  line-height: 1 !important;
+  padding-top: 0 !important;
+  margin: 0 !important;
+  display: block !important;
 }
 
 .filter-row { display: flex; gap: 5px; flex-wrap: wrap; }
