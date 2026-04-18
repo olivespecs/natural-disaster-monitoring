@@ -290,23 +290,49 @@ html, body, section, aside, header { margin: 0; padding: 0; }
 }
 
 /* ── Event feed ──────────────────────────────────────────────────────────── */
-.feed-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.feed-panel { flex: 1.5; min-height: 0; display: flex; flex-direction: column; }
 .event-feed {
   flex: 1;
-  overflow-y: auto;
+  overflow-x: auto;
+  overflow-y: hidden;
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  max-height: 220px;
+  flex-direction: row;
+  gap: 8px;
+  padding: 4px;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
 }
 .feed-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 10px;
   padding: 24px;
   color: var(--muted);
   font-size: 12px;
+  width: 100%;
+  min-width: 300px;
+}
+
+/* ── Carousel scrollbar ──────────────────────────────────────────────────── */
+.event-feed::-webkit-scrollbar {
+  height: 6px;
+}
+
+.event-feed::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.02);
+  border-radius: 3px;
+}
+
+.event-feed::-webkit-scrollbar-thumb {
+  background: rgba(0,212,255,0.3);
+  border-radius: 3px;
+  transition: background 0.2s;
+}
+
+.event-feed::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,212,255,0.6);
 }
 
 .event-card {
@@ -314,12 +340,18 @@ html, body, section, aside, header { margin: 0; padding: 0; }
   border: 1px solid var(--border);
   border-left: 3px solid;
   border-radius: 8px;
-  padding: 8px 10px;
+  padding: 10px 12px;
   cursor: pointer;
   transition: all 0.18s ease;
   animation: slide-in 0.35s ease;
+  flex: 0 0 280px;
+  min-height: 110px;
+  display: flex;
+  flex-direction: column;
+  scroll-snap-align: center;
+  scroll-snap-stop: auto;
 }
-.event-card:hover { background: rgba(255,255,255,0.06); transform: translateX(2px); }
+.event-card:hover { background: rgba(255,255,255,0.08); transform: scale(1.02); box-shadow: 0 8px 24px rgba(0,212,255,0.15); }
 
 .event-card.risk-CRITICAL { border-left-color: var(--risk-critical); }
 .event-card.risk-HIGH     { border-left-color: var(--risk-high);     }
@@ -331,27 +363,29 @@ html, body, section, aside, header { margin: 0; padding: 0; }
   to   { opacity: 1; transform: translateY(0);    }
 }
 
-.card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; }
-.card-title { font-size: 12px; font-weight: 600; color: var(--text); line-height: 1.3; flex: 1; }
+.card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; margin-bottom: 4px; }
+.card-title { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.2; flex: 1; }
 .risk-pill {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
-  padding: 2px 7px;
+  padding: 3px 8px;
   border-radius: 999px;
   letter-spacing: 0.5px;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 .risk-pill.CRITICAL { background: rgba(255,23,68,0.2);  color: var(--risk-critical); }
 .risk-pill.HIGH     { background: rgba(255,109,0,0.2);  color: var(--risk-high);     }
 .risk-pill.MEDIUM   { background: rgba(255,214,0,0.15); color: var(--risk-medium);   }
 .risk-pill.LOW      { background: rgba(0,230,118,0.15); color: var(--risk-low);       }
 
-.card-meta { display: flex; gap: 8px; margin-top: 4px; }
-.card-cat  { font-size: 10px; color: var(--muted); }
+.card-meta { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; align-items: center; }
+.card-cat  { font-size: 11px; color: var(--muted); white-space: nowrap; }
 .card-score {
-  font-size: 10px;
-  color: var(--subtle);
+  font-size: 11px;
+  color: var(--accent);
   font-family: var(--mono);
+  font-weight: 600;
 }
 .mode-chip {
   font-size: 9px;
