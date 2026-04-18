@@ -2,8 +2,10 @@
 
 import json
 import logging
+import subprocess
 import time
 from datetime import datetime
+from typing import Any, List
 
 from app.models import EONETEvent
 from app.inference.engine import run_inference
@@ -11,24 +13,43 @@ from app.inference.engine import run_inference
 logger = logging.getLogger(__name__)
 
 
-def process_event_task(event_dict: dict) -> dict:
-    """
-    RQ task: deserialize an EONET event, run AI inference, and persist results.
-    Called by the RQ worker process. Tracks current event ID in Redis for telemetry.
-    """
+def _read_gpu_utilization_percent() -> float:
+    """Best-effort GPU utilization read; returns 0 when unavailable."""
+    try:
+        completed = subprocess.run(
+            [
+                "nvidia-smi",
+                "--query-gpu=utilization.gpu",
+                "--format=csv,noheader,nounits",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=1.5,
+        )
+        if completed.returncode != 0:
+            return 0.0
+        first = (completed.stdout or "").strip().splitlines()[0]
+        return float(first)
+    except Exception:
+        return 0.0
+
+
+def _process_single_event(event_dict: dict[str, Any]) -> dict[str, Any]:
+    """Run one event through inference and persist status updates."""
     from app.queue.manager import (
         get_enriched_event,
         update_enriched_event,
         record_processed_event,
         try_idempotent_inference_write,
         redis_conn,
+        update_gpu_utilization,
     )
 
     event = EONETEvent(**event_dict)
     event_id = event.id
     started = time.perf_counter()
 
-    # Mark as processing
     enriched = get_enriched_event(event_id) or {
         "event": event_dict,
         "job_id": "unknown",
@@ -39,7 +60,6 @@ def process_event_task(event_dict: dict) -> dict:
         logger.info(f"event_already_completed event_id={event_id} job_id={enriched.get('job_id')}")
         return enriched["inference"]
 
-    # Track current event being processed (5-min TTL)
     try:
         redis_conn.setex("eonet:worker:current_task", 300, event_id)
     except Exception as e:
@@ -61,6 +81,7 @@ def process_event_task(event_dict: dict) -> dict:
         wrote = try_idempotent_inference_write(event_id, enriched, write_key)
         if wrote:
             record_processed_event(event_id, elapsed_ms)
+            update_gpu_utilization(_read_gpu_utilization_percent())
         else:
             logger.warning(
                 f"idempotent_write_skipped event_id={event_id} job_id={enriched.get('job_id')} "
@@ -86,11 +107,43 @@ def process_event_task(event_dict: dict) -> dict:
         update_enriched_event(event_id, enriched)
         raise
     finally:
-        # Clear current task tracking
         try:
             redis_conn.delete("eonet:worker:current_task")
         except Exception:
             pass
+
+
+def process_event_task(event_dict: dict) -> dict:
+    """
+    RQ task: deserialize an EONET event, run AI inference, and persist results.
+    Called by the RQ worker process. Tracks current event ID in Redis for telemetry.
+    """
+    return _process_single_event(event_dict)
+
+
+def process_event_batch_task(events_payload: List[dict[str, Any]]) -> dict[str, Any]:
+    """
+    RQ task: process a batch of EONET events in one worker invocation.
+    Individual event failures are isolated so one bad item does not drop the whole batch.
+    """
+    results: List[dict[str, Any]] = []
+    failures: List[dict[str, str]] = []
+
+    for event_dict in events_payload:
+        event_id = str(event_dict.get("id", "unknown"))
+        try:
+            result = _process_single_event(event_dict)
+            results.append(result)
+        except Exception as e:
+            failures.append({"event_id": event_id, "error": f"{type(e).__name__}: {e}"})
+
+    logger.info(
+        "batch_processed size=%s success=%s failures=%s",
+        len(events_payload),
+        len(results),
+        len(failures),
+    )
+    return {"processed": len(results), "failed": len(failures), "failures": failures}
 
 
 def process_event_dead_letter(job, _connection, exc_type, exc_value, _traceback) -> None:

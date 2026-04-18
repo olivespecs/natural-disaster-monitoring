@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.queue.manager import get_queue_stats, inference_queue, redis_conn, list_dead_letters
 from rq.job import Job
+from app.config import settings
 
 router = APIRouter(prefix="/api/v1/queue", tags=["Queue"])
 
@@ -59,7 +60,7 @@ async def simulate_load(count: int = 50):
     import random
     from datetime import datetime
     from app.models import EONETEvent, EONETCategory, EONETGeometry
-    from app.queue.manager import enqueue_event
+    from app.queue.manager import enqueue_event_batch
 
     enqueued = 0
     categories = [
@@ -69,6 +70,7 @@ async def simulate_load(count: int = 50):
         ("earthquakes", "Earthquakes")
     ]
     
+    generated_events = []
     for i in range(count):
         cat_id, cat_title = random.choice(categories)
         lat = random.uniform(-60, 60)
@@ -87,8 +89,13 @@ async def simulate_load(count: int = 50):
                 coordinates=[lon, lat]
             )]
         )
-        await enqueue_event(event, at_front=True)
-        enqueued += 1
+        generated_events.append(event)
+
+    for idx in range(0, len(generated_events), settings.inference_batch_size):
+        batch = generated_events[idx: idx + settings.inference_batch_size]
+        job_id = await enqueue_event_batch(batch, at_front=True)
+        if job_id:
+            enqueued += len(batch)
         
     return {"message": f"Successfully enqueued {enqueued} simulated events.", "count": enqueued}
 
@@ -100,7 +107,7 @@ async def simulate_spike(count: int = 50):
     import random
     from datetime import datetime
     from app.models import EONETEvent, EONETCategory, EONETGeometry
-    from app.queue.manager import enqueue_event
+    from app.queue.manager import enqueue_event_batch
 
     enqueued = 0
     categories = [
@@ -110,6 +117,7 @@ async def simulate_spike(count: int = 50):
         ("earthquakes", "Earthquakes")
     ]
     
+    generated_events = []
     for i in range(count):
         cat_id, cat_title = random.choice(categories)
         lat = random.uniform(-60, 60)
@@ -128,7 +136,12 @@ async def simulate_spike(count: int = 50):
                 coordinates=[lon, lat]
             )]
         )
-        await enqueue_event(event)
-        enqueued += 1
+        generated_events.append(event)
+
+    for idx in range(0, len(generated_events), settings.inference_batch_size):
+        batch = generated_events[idx: idx + settings.inference_batch_size]
+        job_id = await enqueue_event_batch(batch, at_front=True)
+        if job_id:
+            enqueued += len(batch)
         
     return {"message": f"Successfully enqueued {enqueued} spike events.", "count": enqueued}

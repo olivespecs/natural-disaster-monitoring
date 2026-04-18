@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse
 from app.config import settings
 from app.eonet.poller import run_poller, poller_status
 from app.queue.manager import redis_conn, ENRICHED_EVENT_PREFIX, get_queue_stats
-from app.routers import health, events, queue_router, analytics, websocket_router
+from app.routers import health, events, queue_router, analytics, websocket_router, metrics
 from app.routers.websocket_router import events_manager, queue_manager_ws
 
 logging.basicConfig(
@@ -120,6 +120,7 @@ app.include_router(events.router)
 app.include_router(queue_router.router)
 app.include_router(analytics.router)
 app.include_router(websocket_router.router)
+app.include_router(metrics.router)
 
 # Static files (dashboard)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")

@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: nava-ai
+spec:
+  selector:
+    app: redis
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: 6379
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nava-api
+  namespace: nava-ai
+  labels:
+    app: nava-api
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: /metrics
+    prometheus.io/port: "8000"
+spec:
+  selector:
+    app: nava-api
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8000

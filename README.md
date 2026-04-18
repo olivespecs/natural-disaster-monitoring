@@ -7,8 +7,11 @@ Real-time natural disaster monitoring powered by the **NASA EONET API**, with AI
 - 🌍 **Live World Map** — color-coded Leaflet.js markers updated in real time
 - 🧠 **Two-Tier AI Engine** — configured Gemini model for rich LLM analysis; heuristic engine as zero-config fallback
 - ⚡ **Inference Queue** — Redis + RQ workers process every event asynchronously
+- 📦 **Batched Inference** — workers process configurable event batches per invocation
 - 📡 **WebSocket Push** — dashboard updates without polling
 - 📊 **Live Analytics** — category distribution, risk level charts, queue monitor
+- 📈 **Prometheus Metrics** — `/metrics` exports latency, queue depth, throughput, and GPU utilization
+- ☸️ **Kubernetes Manifests** — Deployments, Services, GPU worker scheduling, and queue-depth autoscaling
 - 🔥 Covers: Wildfires, Storms, Volcanoes, Floods, Earthquakes, Landslides & more
 
 ## 🚀 Quickstart
@@ -127,8 +130,27 @@ GEMINI_API_KEY set?
 | `EONET_MAX_RETRIES` | `3` | Retry attempts for transient EONET failures (429/5xx/network) |
 | `EONET_RETRY_BACKOFF_SECONDS` | `1.2` | Linear backoff base in seconds between EONET retries |
 | `JOB_MAX_RETRIES` | `2` | Maximum RQ retries before dead-lettering a job |
+| `MAX_QUEUE_DEPTH` | `500` | Max queued jobs before poller defers new event batches |
+| `INFERENCE_BATCH_SIZE` | `8` | Number of events processed per worker task invocation |
 | `GEMINI_API_KEY` | _(blank)_ | Gemini API key — leave blank for heuristic mode |
 | `GEMINI_MODEL` | `gemma-4-26b-a4b-it` | Gemini model name |
+
+### Prometheus metrics endpoint
+
+- `GET /metrics`
+- Exported series:
+  - `inference_latency_seconds`
+  - `queue_depth_total`
+  - `events_processed_total`
+  - `gpu_utilization_gauge`
+
+### Kubernetes deployment
+
+Use manifests in `k8s/` for production-style deployment and autoscaling:
+
+```bash
+kubectl apply -f k8s/
+```
 
 ---
 

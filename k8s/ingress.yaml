@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nava-api
+  namespace: nava-ai
+spec:
+  rules:
+  - host: nava-ai.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: nava-api
+            port:
+              number: 80

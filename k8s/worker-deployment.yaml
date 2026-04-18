@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nava-worker
+  namespace: nava-ai
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nava-worker
+  template:
+    metadata:
+      labels:
+        app: nava-worker
+    spec:
+      nodeSelector:
+        accelerator: nvidia
+      tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+      containers:
+      - name: worker
+        image: nava-ai:latest
+        imagePullPolicy: IfNotPresent
+        command: ["python", "worker/run.py"]
+        envFrom:
+        - configMapRef:
+            name: nava-ai-config
+        - secretRef:
+            name: nava-ai-secrets
+        resources:
+          requests:
+            cpu: 500m
+            memory: 512Mi
+          limits:
+            cpu: "2"
+            memory: 2Gi
+            nvidia.com/gpu: "1"

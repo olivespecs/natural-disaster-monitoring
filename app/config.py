@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     eonet_max_retries: int = 3
     eonet_retry_backoff_seconds: float = 1.2
     job_max_retries: int = 2
+    max_queue_depth: int = 500
+    inference_batch_size: int = 8
 
     # Gemini AI — optional; if blank, heuristic engine is used
     gemini_api_key: Optional[str] = None

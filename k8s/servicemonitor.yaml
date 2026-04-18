@@ -1,0 +1,16 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: nava-api
+  namespace: nava-ai
+spec:
+  selector:
+    matchLabels:
+      app: nava-api
+  namespaceSelector:
+    matchNames:
+    - nava-ai
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 15s
