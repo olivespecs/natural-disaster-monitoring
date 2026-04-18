@@ -11,6 +11,7 @@ const state = {
   features: [],         // current GeoJSON features from /api/v1/events/geojson
   activeFilter: 'all',
   activeRisk: null,
+  includeSimulated: false,
   pollInterval: 60,
   catChart: null,
   riskChart: null,
@@ -19,6 +20,20 @@ const state = {
 
 // ── DOM refs ──────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
+
+
+function apiUrl(path, params = {}) {
+  const url = new URL(path, window.location.origin);
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      url.searchParams.set(key, String(value));
+    }
+  });
+  if (state.includeSimulated) {
+    url.searchParams.set('include_simulated', 'true');
+  }
+  return `${url.pathname}${url.search}`;
+}
 
 // ── Clock ─────────────────────────────────────────────────────────────────
 function updateClock() {
@@ -136,6 +151,15 @@ function showModal(p) {
   const scoreW = Math.min(100, Math.max(0, p.severity_score || 0));
   const modeLabel = p.inference_mode === 'heuristic' ? 'Heuristic AI' : `Gemini ${p.inference_mode || ''}`;
   const link = p.link ? `<a class="modal-link" href="${p.link}" target="_blank" rel="noopener">🔗 View source →</a>` : '';
+  
+  // Pipeline path badges
+  const isPipelineGemini = p.pipeline_path === 'TIER_2_GEMINI';
+  const pipelineBadge = isPipelineGemini
+    ? `<span class="modal-badge pipeline-gemini">✅ Tier 2 Executed</span>`
+    : `<span class="modal-badge pipeline-fallback">⚠️ Tier 2 Unavailable</span>`;
+  const pipelineExplanation = isPipelineGemini
+    ? 'Gemini AI Enrichment executed. Heuristic bypassed.'
+    : 'Zero-downtime Tier 1 Heuristic Fallback triggered.';
 
   $('modal-body').innerHTML = `
     <div class="modal-event-title">${p.title || 'Unknown Event'}</div>
@@ -143,6 +167,12 @@ function showModal(p) {
       <span class="modal-badge risk ${p.risk_level}">${p.risk_level || 'UNKNOWN'} RISK</span>
       <span class="modal-badge trend">↗ ${p.trend || 'STABLE'}</span>
       <span class="modal-badge mode">🧠 ${modeLabel}</span>
+    </div>
+    
+    <div class="modal-section">
+      <div class="modal-section-title">🔄 Pipeline & Fallback</div>
+      <div class="modal-badges" style="margin-bottom: 8px;">${pipelineBadge}</div>
+      <div class="modal-narrative" style="font-size: 12px; color: var(--subtle); line-height: 1.5;">${pipelineExplanation}</div>
     </div>
 
     ${p.impact_narrative ? `
@@ -190,6 +220,161 @@ function showModal(p) {
 
 function closeModal() {
   $('modal-backdrop').style.display = 'none';
+}
+
+function showArchitectureModal() {
+  const backdrop = document.getElementById('architecture-modal-backdrop');
+  if (!backdrop) {
+    console.warn('Architecture modal backdrop not found');
+    return;
+  }
+  
+  const body = document.getElementById('architecture-modal-body');
+  if (!body) {
+    console.warn('Architecture modal body not found');
+    return;
+  }
+  
+  body.innerHTML = `
+    <div class="arch-section">
+      <h3>Event Processing Pipeline</h3>
+      <div class="arch-diagram">EONET API (NASA)
+        ↓
+  Polling Client (Celery Task)
+        ↓
+  Event Normalization &amp; Enrichment
+        ↓
+  Gemini AI Analysis (Fallback: Heuristics)
+        ↓
+  Risk Scoring &amp; Rules Engine
+        ↓
+  WebSocket Broadcast (Real-time Updates)
+      </div>
+    </div>
+    
+    <div class="arch-section">
+      <h3>Queue Management</h3>
+      <ul class="arch-list">
+        <li><strong>Celery</strong> — Distributed task queue for async processing</li>
+        <li><strong>Redis</strong> — Broker &amp; result backend for task coordination</li>
+        <li><strong>Worker Pool</strong> — 4+ processes for concurrent event handling</li>
+        <li><strong>Backpressure Control</strong> — Dynamic queue throttling when overloaded</li>
+      </ul>
+    </div>
+    
+    <div class="arch-section">
+      <h3>Inference Engine</h3>
+      <ul class="arch-list">
+        <li><strong>Gemini API</strong> — Primary LLM for contextual risk assessment</li>
+        <li><strong>Fallback Rules</strong> — Deterministic scoring when API is unavailable</li>
+        <li><strong>Geo Utils</strong> — Proximity &amp; impact radius calculations</li>
+        <li><strong>Caching</strong> — Reduces redundant API calls &amp; latency</li>
+      </ul>
+    </div>
+    
+    <div class="arch-section">
+      <h3>Real-time Monitoring</h3>
+      <ul class="arch-list">
+        <li><strong>WebSocket</strong> — Instant event &amp; metric updates to clients</li>
+        <li><strong>Metrics Endpoint</strong> — Queue depth, latency, worker health</li>
+        <li><strong>Health Checks</strong> — Redis, API connectivity, task queue status</li>
+      </ul>
+    </div>
+    
+    <div class="modal-footer">
+      <button class="modal-button secondary" onclick="closeArchitectureModal()" type="button">Close</button>
+    </div>
+  `;
+  
+  backdrop.style.display = 'flex';
+}
+
+function closeArchitectureModal() {
+  const backdrop = document.getElementById('architecture-modal-backdrop');
+  if (backdrop) {
+    backdrop.style.display = 'none';
+  }
+}
+
+function updateQueueMetrics(data) {
+  const metricsDiv = $('queue-metrics');
+  if (!metricsDiv) return;
+  
+  // Extract latency values from backend (field names: avg_latency_ms, last_latency_ms, queued)
+  const hasAvgLatency = typeof data.avg_latency_ms === 'number' && Number.isFinite(data.avg_latency_ms);
+  const avgLatency = hasAvgLatency ? data.avg_latency_ms.toFixed(0) : '-';
+  const hasLastLatency = data.last_latency_ms !== undefined && data.last_latency_ms !== null;
+  const lastLatency = hasLastLatency ? data.last_latency_ms : '-';
+  const queueSize = data.queued || 0;
+  const eventsPerMin = typeof data.events_per_minute === 'number' && Number.isFinite(data.events_per_minute)
+    ? data.events_per_minute.toFixed(1)
+    : '0.0';
+  
+  metricsDiv.innerHTML = `
+    <div class="metric-item">
+      <strong>Avg Latency</strong>
+      <span class="metric-value">${avgLatency} ms</span>
+    </div>
+    <div class="metric-item">
+      <strong>Last Job</strong>
+      <span class="metric-value">${lastLatency} ms</span>
+    </div>
+    <div class="metric-item">
+      <strong>Queue Depth</strong>
+      <span class="metric-value">${queueSize}</span>
+    </div>
+    <div class="metric-item">
+      <strong>E/min</strong>
+      <span class="metric-value">${eventsPerMin}</span>
+    </div>
+  `;
+}
+
+function checkBackpressure(metrics) {
+  const banner = document.querySelector('.backpressure-banner');
+  if (!banner) return;
+  
+  // Determine if backpressure is active
+  const queueSize = metrics.queued || 0;
+  const avgLatency = metrics.avg_latency_ms || 0;
+  
+  // Thresholds for backpressure
+  const QUEUE_THRESHOLD = 50;
+  const LATENCY_THRESHOLD_MS = 500;
+  
+  const isBackpressured = queueSize > QUEUE_THRESHOLD || avgLatency > LATENCY_THRESHOLD_MS;
+  
+  if (isBackpressured) {
+    banner.classList.add('active');
+    banner.innerHTML = `
+      <span class="backpressure-icon">⚠️</span>
+      <span>Backpressure: Queue=${queueSize}, Latency=${avgLatency.toFixed(0)}ms</span>
+    `;
+  } else {
+    banner.classList.remove('active');
+  }
+}
+
+function simulateSpike() {
+  // Simulate a spike by creating multiple dummy tasks
+  console.log('Simulating task spike...');
+  const spikeCount = 10;
+  
+  // Send request to backend to inject test tasks
+  fetch(`/api/v1/queue/simulate-spike?count=${spikeCount}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  })
+    .then(r => r.json())
+    .then(data => {
+      state.includeSimulated = true;
+      console.log('Spike simulation started:', data);
+      fetchGeoJSON();
+      fetchEvents();
+      fetchSummary();
+      alert(`✓ Spike simulation started (${data.count || spikeCount} events). New spike events are prioritized in queue.`);
+    })
+    .catch(err => console.error('Spike simulation failed:', err));
 }
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
@@ -359,12 +544,18 @@ function updateQueue(data) {
     const pct = (data.next_poll_in / state.pollInterval) * 100;
     $('poll-fill').style.width = pct + '%';
   }
+  
+  // Update new queue metrics and backpressure status
+  if (data.avg_latency_ms !== undefined || data.queued !== undefined) {
+    updateQueueMetrics(data);
+    checkBackpressure(data);
+  }
 }
 
 // ── Data fetch helpers ────────────────────────────────────────────────────
 async function fetchGeoJSON() {
   try {
-    const r = await fetch('/api/v1/events/geojson');
+    const r = await fetch(apiUrl('/api/v1/events/geojson'));
     const data = await r.json();
     state.features = data.features || [];
     applyFilters();
@@ -373,7 +564,7 @@ async function fetchGeoJSON() {
 
 async function fetchEvents() {
   try {
-    const r = await fetch('/api/v1/events?limit=250');
+    const r = await fetch(apiUrl('/api/v1/events', { limit: 250 }));
     const data = await r.json();
     const events = data.events || [];
     events.forEach(e => { if (e.event?.id) state.events[e.event.id] = e; });
@@ -384,7 +575,7 @@ async function fetchEvents() {
 
 async function fetchSummary() {
   try {
-    const r = await fetch('/api/v1/analytics/summary');
+    const r = await fetch(apiUrl('/api/v1/analytics/summary'));
     const data = await r.json();
     updateCharts(data);
   } catch (e) { console.warn('Summary fetch failed:', e); }

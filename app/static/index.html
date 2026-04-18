@@ -115,7 +115,7 @@
             <div class="brand-icon">NASA</div>
             <div class="brand-copy">
                 <span class="brand-title">NASA EONET Real-Time AI Monitor</span>
-                <span class="brand-sub">Natural event surveillance with Gemini-backed inference</span>
+                <span class="brand-sub">Natural event surveillance with two-tier AI: Heuristic (always-on) + Gemini (when available)</span>
             </div>
         </div>
 
@@ -127,6 +127,7 @@
         </div>
 
         <div class="header-meta">
+            <button id="arch-btn" class="header-icon-btn" onclick="showArchitectureModal()" type="button" title="View system architecture">Architecture</button>
             <div class="inference-badge" id="inference-badge">
                 <span id="inference-icon">AI</span>
                 <span id="inference-label">Awaiting data...</span>
@@ -183,7 +184,7 @@
 
             <section class="panel feed-panel">
                 <div class="panel-hdr">
-                    <div class="panel-title">Live Intelligence Feed</div>
+                    <div class="panel-title">Live Intelligence Feed - Two-Tier Inference Pipeline</div>
                     <div class="badge" id="feed-badge">0 events</div>
                 </div>
                 <div class="event-feed" id="event-feed">
@@ -217,9 +218,17 @@
 
             <section class="panel queue-panel">
                 <div class="panel-hdr">
-                    <div class="panel-title">Queue Monitor</div>
-                    <div class="workers-pill"><span class="worker-dot"></span><span id="worker-label">0 workers</span></div>
+                    <div class="panel-title">Async Queue & Load Monitor (Redis+RQ)</div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <button id="spike-btn" class="spike-button" onclick="simulateSpike()" type="button" title="Simulate 50-event disaster spike">Simulate Spike</button>
+                        <div class="workers-pill"><span class="worker-dot"></span><span id="worker-label">0 workers</span></div>
+                    </div>
                 </div>
+                
+                <div id="backpressure-banner" class="backpressure-banner">
+                    <span>High Load Detected - Offloading to background workers (<span id="bp-count">0</span> items queued)</span>
+                </div>
+                
                 <div class="queue-grid queue-status">
                     <div class="q-stat">
                         <div class="q-num amber" id="q-queued">0</div>
@@ -238,6 +247,8 @@
                         <div class="q-lbl">Failed</div>
                     </div>
                 </div>
+                
+                <div id="queue-metrics" class="queue-metrics"></div>
                 <div class="queue-meta">
                     <div class="poll-row">
                         <span>Last poll</span>
@@ -259,6 +270,14 @@
         <div class="modal">
             <button class="modal-close" type="button" aria-label="Close details" onclick="closeModal()">x</button>
             <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <div class="modal-backdrop" id="architecture-modal-backdrop" style="display: none;">
+        <div class="modal" style="max-width: 600px;">
+            <button class="modal-close" type="button" aria-label="Close architecture" onclick="closeArchitectureModal()">x</button>
+            <div class="modal-event-title">System Architecture</div>
+            <div id="architecture-modal-body"></div>
         </div>
     </div>
 

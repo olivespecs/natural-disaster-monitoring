@@ -102,6 +102,7 @@ def run_inference(event: EONETEvent) -> InferenceResult:
         confidence += 0.05
 
     # ── Step 2: Gemini enrichment ─────────────────────────────────────────────
+    pipeline_path = "TIER_1_HEURISTIC"  # Default to heuristic tier
     gemini = _get_gemini()
     if gemini:
         try:
@@ -110,6 +111,7 @@ def run_inference(event: EONETEvent) -> InferenceResult:
             recommendations = result["recommendations"]
             trend = result["trend"]
             inference_mode = settings.gemini_model
+            pipeline_path = "TIER_2_GEMINI"  # Successfully used Gemini
             confidence = min(0.97, confidence + 0.20)
             logger.info(
                 f"gemini_analysis_complete event_id={event.id} "
@@ -131,6 +133,7 @@ def run_inference(event: EONETEvent) -> InferenceResult:
         impact_narrative=impact_narrative,
         recommendations=recommendations,
         inference_mode=inference_mode,
+        pipeline_path=pipeline_path,
         confidence=round(confidence, 2),
         processed_at=datetime.utcnow(),
     )

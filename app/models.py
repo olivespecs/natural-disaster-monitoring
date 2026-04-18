@@ -54,6 +54,7 @@ class InferenceResult(BaseModel):
     impact_narrative: str
     recommendations: List[str]
     inference_mode: str            # "gemma-4-26b-a4b-it" or "heuristic"
+    pipeline_path: str             # "TIER_2_GEMINI" or "TIER_1_HEURISTIC"
     confidence: float
     processed_at: datetime
 
@@ -74,6 +75,10 @@ class QueueStats(BaseModel):
     failed: int
     workers: int
     events_per_minute: float
+    avg_latency_ms: Optional[float] = 0.0
+    last_latency_ms: Optional[int] = 0
+    backpressure_warning: Optional[bool] = False
+    current_processing_event_id: Optional[str] = None
     last_poll_at: Optional[str] = None
     next_poll_in: Optional[int] = None
     is_polling: Optional[bool] = False

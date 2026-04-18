@@ -14,7 +14,7 @@ from fastapi.responses import FileResponse
 
 from app.config import settings
 from app.eonet.poller import run_poller, poller_status
-from app.queue.manager import redis_conn, ENRICHED_EVENT_PREFIX, get_queue_stats
+from app.queue.manager import get_all_enriched_events, redis_conn, ENRICHED_EVENT_PREFIX, get_queue_stats
 from app.routers import health, events, queue_router, analytics, websocket_router
 from app.routers.websocket_router import events_manager, queue_manager_ws
 

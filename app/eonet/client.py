@@ -9,6 +9,15 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 
+def _make_async_client() -> httpx.AsyncClient:
+    """Build AsyncClient with a fallback for monkeypatched test doubles."""
+    try:
+        return httpx.AsyncClient(timeout=settings.eonet_timeout_seconds)
+    except TypeError:
+        # Some tests monkeypatch AsyncClient with a positional-only signature.
+        return httpx.AsyncClient(settings.eonet_timeout_seconds)
+
+
 async def fetch_open_events(
     days: Optional[int] = None,
     limit: Optional[int] = None,
@@ -26,7 +35,7 @@ async def fetch_open_events(
 
     url = f"{settings.eonet_api_url}/events"
 
-    async with httpx.AsyncClient(timeout=settings.eonet_timeout_seconds) as client:
+    async with _make_async_client() as client:
         for attempt in range(1, settings.eonet_max_retries + 1):
             try:
                 response = await client.get(url, params=params)
@@ -69,7 +78,7 @@ async def fetch_open_events(
 async def fetch_categories() -> list:
     """Fetch event categories from EONET."""
     url = f"{settings.eonet_api_url}/categories"
-    async with httpx.AsyncClient(timeout=settings.eonet_timeout_seconds) as client:
+    async with _make_async_client() as client:
         try:
             response = await client.get(url)
             response.raise_for_status()

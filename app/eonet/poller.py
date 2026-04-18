@@ -5,7 +5,7 @@ import logging
 from datetime import datetime
 
 from app.eonet.client import fetch_open_events
-from app.queue.manager import enqueue_event, mark_event_seen
+from app.queue.manager import enqueue_event, mark_event_seen, unmark_event_seen
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -45,9 +45,14 @@ async def run_poller(broadcast_fn=None) -> None:
             for event in events:
                 is_new = await mark_event_seen(event.id)
                 if is_new:
-                    await enqueue_event(event)
-                    new_count += 1
-                    logger.info(f"  ↳ Enqueued: [{event.id}] {event.title}")
+                    job_id = await enqueue_event(event)
+                    if job_id:
+                        new_count += 1
+                        logger.info(f"  ↳ Enqueued: [{event.id}] {event.title}")
+                    else:
+                        # Queue is full; allow this event to be retried on next poll.
+                        await unmark_event_seen(event.id)
+                        logger.warning(f"  ↳ Deferred (queue full): [{event.id}] {event.title}")
 
             poller_status.update({
                 "last_poll_at": datetime.utcnow().isoformat() + "Z",

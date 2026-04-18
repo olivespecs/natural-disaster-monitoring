@@ -24,6 +24,7 @@ SEEN_EVENTS_KEY = "eonet:seen_events"
 ENRICHED_EVENT_PREFIX = "eonet:event:"
 ENRICHED_EVENT_TTL = 60 * 60 * 24  # 24 hours
 PROCESSED_EVENTS_ZSET = "eonet:metrics:processed"
+LATENCY_LIST_KEY = "eonet:metrics:latency"
 DLQ_PREFIX = "eonet:dlq:"
 DLQ_INDEX_KEY = "eonet:dlq:index"
 INFERENCE_WRITE_PREFIX = "eonet:inference-write:"
@@ -54,7 +55,7 @@ async def mark_event_seen(event_id: str) -> bool:
 
 # ── Event enqueuing ──────────────────────────────────────────────────────────
 
-async def enqueue_event(event: EONETEvent) -> str:
+async def enqueue_event(event: EONETEvent, at_front: bool = False) -> str:
     """Enqueue an EONET event for AI inference. Returns the RQ job ID."""
     from app.queue.worker_tasks import process_event_task, process_event_dead_letter  # avoid circular import
 
@@ -66,6 +67,7 @@ async def enqueue_event(event: EONETEvent) -> str:
         result_ttl=ENRICHED_EVENT_TTL,
         failure_ttl=ENRICHED_EVENT_TTL,
         on_failure=process_event_dead_letter,
+        at_front=at_front,
     )
 
     # Store initial enriched-event record in Redis
@@ -142,7 +144,7 @@ def get_all_enriched_events() -> List[dict]:
 # ── Queue stats ──────────────────────────────────────────────────────────────
 
 def get_queue_stats() -> QueueStats:
-    """Return live queue depth and worker stats."""
+    """Return live queue depth, worker stats, latency, and backpressure warning."""
     try:
         from rq import Worker
         now_ts = datetime.utcnow().timestamp()
@@ -153,26 +155,51 @@ def get_queue_stats() -> QueueStats:
         redis_conn.zremrangebyscore(PROCESSED_EVENTS_ZSET, 0, ten_min_ago)
         processed_last_min = redis_conn.zcount(PROCESSED_EVENTS_ZSET, one_min_ago, now_ts)
 
+        latencies_raw = redis_conn.lrange(LATENCY_LIST_KEY, 0, 99)
+        latencies = [int(x) for x in latencies_raw if x.decode('utf-8').isdigit()] if latencies_raw else []
+        last_latency = latencies[0] if latencies else 0
+        avg_latency = float(sum(latencies)) / len(latencies) if latencies else 0.0
+
         workers = Worker.all(connection=redis_conn)
+        
+        # Get current processing event ID from Redis
+        current_event_id = None
+        try:
+            val = redis_conn.get("eonet:worker:current_task")
+            current_event_id = val.decode() if val else None
+        except Exception:
+            pass
+        
+        # Backpressure warning: True if queue depth > 10
+        queue_depth = inference_queue.count
+        backpressure = queue_depth > 10
+        
         return QueueStats(
-            queued=inference_queue.count,
+            queued=queue_depth,
             started=inference_queue.started_job_registry.count,
             finished=inference_queue.finished_job_registry.count,
             failed=inference_queue.failed_job_registry.count,
             workers=len(workers),
             events_per_minute=float(processed_last_min),
+            avg_latency_ms=round(avg_latency, 2),
+            last_latency_ms=last_latency,
+            backpressure_warning=backpressure,
+            current_processing_event_id=current_event_id
         )
     except Exception as e:
         logger.error(f"Failed to get queue stats: {e}")
-        return QueueStats(queued=0, started=0, finished=0, failed=0, workers=0, events_per_minute=0.0)
+        return QueueStats(queued=0, started=0, finished=0, failed=0, workers=0, events_per_minute=0.0, avg_latency_ms=0.0, last_latency_ms=0, backpressure_warning=False, current_processing_event_id=None)
 
 
-def record_processed_event(event_id: str, processed_at: Optional[datetime] = None) -> None:
+def record_processed_event(event_id: str, elapsed_ms: Optional[int] = None, processed_at: Optional[datetime] = None) -> None:
     """Track successfully processed events for throughput metrics."""
     ts = (processed_at or datetime.utcnow()).timestamp()
     member = f"{event_id}:{ts}"
     try:
         redis_conn.zadd(PROCESSED_EVENTS_ZSET, {member: ts})
+        if elapsed_ms is not None:
+            redis_conn.lpush(LATENCY_LIST_KEY, str(elapsed_ms))
+            redis_conn.ltrim(LATENCY_LIST_KEY, 0, 99)
     except Exception as e:
         logger.error(f"Failed to record processed event metric for {event_id}: {e}")
 

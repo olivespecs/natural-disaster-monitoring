@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from collections import defaultdict
 
 from app.queue.manager import get_all_enriched_events
@@ -6,9 +6,20 @@ from app.queue.manager import get_all_enriched_events
 router = APIRouter(prefix="/api/v1/analytics", tags=["Analytics"])
 
 
+def _is_simulated_event(enriched_event: dict) -> bool:
+    event_id = ((enriched_event.get("event") or {}).get("id") or "")
+    return event_id.startswith(("SIM_", "SPIKE_"))
+
+
+def _filter_events(events: list[dict], include_simulated: bool) -> list[dict]:
+    if include_simulated:
+        return events
+    return [e for e in events if not _is_simulated_event(e)]
+
+
 @router.get("/summary", summary="Aggregated event counts, average severity, and risk distribution")
-async def summary():
-    events = get_all_enriched_events()
+async def summary(include_simulated: bool = Query(False, description="Include synthetic load/spike events")):
+    events = _filter_events(get_all_enriched_events(), include_simulated)
     category_counts: dict = defaultdict(int)
     risk_counts: dict = defaultdict(int)
     severity_scores: list = []
@@ -41,8 +52,8 @@ async def summary():
 
 
 @router.get("/hotspots", summary="Top 10 highest-severity events by location")
-async def hotspots():
-    events = get_all_enriched_events()
+async def hotspots(include_simulated: bool = Query(False, description="Include synthetic load/spike events")):
+    events = _filter_events(get_all_enriched_events(), include_simulated)
     spots = []
 
     for e in events:

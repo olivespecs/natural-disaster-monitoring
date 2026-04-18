@@ -6,14 +6,27 @@ from app.queue.manager import get_all_enriched_events, get_enriched_event
 router = APIRouter(prefix="/api/v1", tags=["Events"])
 
 
+def _is_simulated_event(enriched_event: dict) -> bool:
+    """Return True for synthetic load/spike events used in testing."""
+    event_id = ((enriched_event.get("event") or {}).get("id") or "")
+    return event_id.startswith(("SIM_", "SPIKE_"))
+
+
+def _filter_events(events: list[dict], include_simulated: bool) -> list[dict]:
+    if include_simulated:
+        return events
+    return [e for e in events if not _is_simulated_event(e)]
+
+
 @router.get("/events", summary="List enriched events with optional filters")
 async def list_events(
     category: Optional[str] = Query(None, description="Filter by EONET category ID, e.g. wildfires"),
     risk_level: Optional[str] = Query(None, description="Filter by risk level: LOW, MEDIUM, HIGH, CRITICAL"),
     status: Optional[str] = Query(None, description="Filter by job status: queued, processing, completed, failed"),
+    include_simulated: bool = Query(False, description="Include synthetic load/spike events"),
     limit: int = Query(default=100, le=500),
 ):
-    events = get_all_enriched_events()
+    events = _filter_events(get_all_enriched_events(), include_simulated)
 
     if category:
         events = [
@@ -36,8 +49,9 @@ async def list_events(
 async def events_geojson(
     category: Optional[str] = None,
     risk_level: Optional[str] = None,
+    include_simulated: bool = Query(False, description="Include synthetic load/spike events"),
 ):
-    events = get_all_enriched_events()
+    events = _filter_events(get_all_enriched_events(), include_simulated)
     features = []
 
     if category:

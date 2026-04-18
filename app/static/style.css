@@ -103,6 +103,27 @@ html, body, section, aside, header { margin: 0; padding: 0; }
 
 .header-right { display: flex; align-items: center; gap: 14px; }
 
+.header-icon-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(124,58,237,0.12);
+  border: 1px solid rgba(124,58,237,0.3);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--accent2);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: var(--font);
+}
+
+.header-icon-btn:hover {
+  background: rgba(124,58,237,0.25);
+  border-color: rgba(124,58,237,0.6);
+}
+
 .inference-badge {
   display: flex;
   align-items: center;
@@ -476,6 +497,87 @@ html, body, section, aside, header { margin: 0; padding: 0; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ── Backpressure Banner ─────────────────────────────────────────────────── */
+.backpressure-banner {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,109,0,0.1);
+  border: 1px solid rgba(255,109,0,0.3);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  font-size: 11px;
+  color: var(--amber);
+  font-weight: 500;
+}
+
+.backpressure-banner.active {
+  display: flex;
+  animation: pulse-amber 1s ease-in-out infinite;
+}
+
+@keyframes pulse-amber {
+  0%, 100% { background: rgba(255,109,0,0.1); }
+  50%       { background: rgba(255,109,0,0.15); }
+}
+
+.backpressure-icon {
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+/* ── Queue Metrics ───────────────────────────────────────────────────────── */
+.queue-metrics {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 10px;
+  padding: 8px;
+  background: rgba(255,255,255,0.02);
+  border-radius: 8px;
+  font-size: 10px;
+}
+
+.metric-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.metric-item strong {
+  color: var(--subtle);
+  font-weight: 600;
+}
+
+.metric-value {
+  color: var(--text);
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 11px;
+}
+
+/* ── Spike Button ────────────────────────────────────────────────────────── */
+.spike-button {
+  width: 100%;
+  padding: 6px 12px;
+  background: rgba(124,58,237,0.15);
+  border: 1px solid rgba(124,58,237,0.4);
+  border-radius: 6px;
+  color: var(--accent2);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: var(--font);
+}
+
+.spike-button:hover {
+  background: rgba(124,58,237,0.25);
+  border-color: rgba(124,58,237,0.6);
+  box-shadow: 0 4px 12px rgba(124,58,237,0.2);
+}
+
 /* ── Modal ───────────────────────────────────────────────────────────────── */
 .modal-backdrop {
   position: fixed;
@@ -546,6 +648,8 @@ html, body, section, aside, header { margin: 0; padding: 0; }
 .modal-badge.risk.LOW      { background: rgba(0,230,118,0.1);   border-color: rgba(0,230,118,0.3);  color: var(--risk-low);      }
 .modal-badge.mode { background: rgba(124,58,237,0.12); border-color: rgba(124,58,237,0.3); color: #a78bfa; }
 .modal-badge.trend { background: rgba(0,212,255,0.08); border-color: rgba(0,212,255,0.2); color: var(--accent); }
+.modal-badge.pipeline-gemini { background: rgba(0,230,118,0.12); border-color: rgba(0,230,118,0.4); color: var(--green); }
+.modal-badge.pipeline-fallback { background: rgba(255,214,0,0.12); border-color: rgba(255,214,0,0.4); color: var(--amber); }
 
 .modal-section { margin-bottom: 14px; }
 .modal-section-title {
@@ -605,6 +709,109 @@ html, body, section, aside, header { margin: 0; padding: 0; }
   margin-top: 10px;
 }
 .modal-link:hover { text-decoration: underline; }
+
+/* ── Architecture Modal ──────────────────────────────────────────────────── */
+.arch-modal {
+  max-width: 700px;
+}
+
+.arch-modal .modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.arch-section {
+  margin-bottom: 16px;
+}
+
+.arch-section h3 {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent2);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.arch-diagram {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 8px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--subtle);
+  font-family: var(--mono);
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.arch-list {
+  list-style: none;
+  padding-left: 0;
+}
+
+.arch-list li {
+  padding: 6px 0;
+  padding-left: 20px;
+  position: relative;
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.arch-list li:before {
+  content: "→";
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  justify-content: flex-end;
+}
+
+.modal-button {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid;
+  font-family: var(--font);
+}
+
+.modal-button.primary {
+  background: rgba(0,212,255,0.2);
+  border-color: rgba(0,212,255,0.4);
+  color: var(--accent);
+}
+
+.modal-button.primary:hover {
+  background: rgba(0,212,255,0.3);
+  border-color: rgba(0,212,255,0.6);
+}
+
+.modal-button.secondary {
+  background: rgba(255,255,255,0.05);
+  border-color: var(--border);
+  color: var(--subtle);
+}
+
+.modal-button.secondary:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: var(--border-h);
+  color: var(--text);
+}
 
 /* ── Leaflet custom markers ───────────────────────────────────────────────── */
 .ev-marker {

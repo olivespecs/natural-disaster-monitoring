@@ -14,13 +14,14 @@ logger = logging.getLogger(__name__)
 def process_event_task(event_dict: dict) -> dict:
     """
     RQ task: deserialize an EONET event, run AI inference, and persist results.
-    Called by the RQ worker process.
+    Called by the RQ worker process. Tracks current event ID in Redis for telemetry.
     """
     from app.queue.manager import (
         get_enriched_event,
         update_enriched_event,
         record_processed_event,
         try_idempotent_inference_write,
+        redis_conn,
     )
 
     event = EONETEvent(**event_dict)
@@ -38,6 +39,12 @@ def process_event_task(event_dict: dict) -> dict:
         logger.info(f"event_already_completed event_id={event_id} job_id={enriched.get('job_id')}")
         return enriched["inference"]
 
+    # Track current event being processed (5-min TTL)
+    try:
+        redis_conn.setex("eonet:worker:current_task", 300, event_id)
+    except Exception as e:
+        logger.warning(f"Failed to track current task: {e}")
+
     enriched["status"] = "processing"
     enriched["attempts"] = int(enriched.get("attempts") or 0) + 1
     update_enriched_event(event_id, enriched)
@@ -53,7 +60,7 @@ def process_event_task(event_dict: dict) -> dict:
         enriched["inference_write_key"] = write_key
         wrote = try_idempotent_inference_write(event_id, enriched, write_key)
         if wrote:
-            record_processed_event(event_id)
+            record_processed_event(event_id, elapsed_ms)
         else:
             logger.warning(
                 f"idempotent_write_skipped event_id={event_id} job_id={enriched.get('job_id')} "
@@ -78,6 +85,12 @@ def process_event_task(event_dict: dict) -> dict:
         enriched["failed_at"] = datetime.utcnow().isoformat()
         update_enriched_event(event_id, enriched)
         raise
+    finally:
+        # Clear current task tracking
+        try:
+            redis_conn.delete("eonet:worker:current_task")
+        except Exception:
+            pass
 
 
 def process_event_dead_letter(job, _connection, exc_type, exc_value, _traceback) -> None:
